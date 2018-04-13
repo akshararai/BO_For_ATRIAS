@@ -84,7 +84,7 @@ for i = 1:length(grun)
     fprintf('------ Prior BO run %d ------\n', grun(i));
     rng(grun(i));
     [min_sample, min_value, botrace] = bayesoptBARE(...
-        f, opt, model, cost_op, num_rand_pts, [], siminit_name);
+        f, opt, model, cost_op, num_rand_pts);
     botrace_prior{i} = botrace;
 end
 %go back to initial folder

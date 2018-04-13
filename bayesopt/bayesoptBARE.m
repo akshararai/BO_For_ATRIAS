@@ -1,4 +1,3 @@
-% mkey = sprintf('%0.4f%0.4f%0.4f%0.4f%0.4f', z(i,1), z(i,2), z(i,3), z(i,4), z(i,5));
 function [minsample,minvalue,botrace] = bayesoptBARE(...
     F,opt,rtp_or_model,cost_op,num_rand_pts,scoresMapF,siminit_name)
     %warning('on');
@@ -15,10 +14,6 @@ function [minsample,minvalue,botrace] = bayesoptBARE(...
     if ~isfield('kernel_dims',opt)
         opt.kernel_dims = opt.dims;
     end
-    if (nargin < 3)
-        rtp_or_model = [];
-        rn = [];
-    end
     if (nargin < 5), cost_op = str2func('findCost_metabolic'); end
     if (nargin < 6)
         num_rand_pts = 2;  % num random pts to request at the start of BO        
@@ -28,22 +23,16 @@ function [minsample,minvalue,botrace] = bayesoptBARE(...
 
     % Either make a grid from a Sobol sequence or use opt.grid
     if isfield(opt,'grid')
-        %hyper_grid = scale_point(opt.grid,opt.mins,opt.maxes);
         % Our grid is already scaled
         hyper_grid = opt.grid;
 		opt.grid_size = size(hyper_grid,1);
     else
     	sobol = sobolset(opt.dims);
     	hyper_grid = sobol(1:opt.grid_size,:);
-        % If the user wants to filter out some candidates
-        if isfield(opt,'filter_func')
-			hyper_grid = scale_point(opt.filter_func(...
-                unscale_point(hyper_grid,opt.mins,opt.maxes)), ...
-                opt.mins,opt.maxes);
-        end
     end
 
-    incomplete = logical(ones(size(hyper_grid,1),1));
+    %Array to exclude points that have been sampled from the grid
+    incomplete = true(size(hyper_grid,1),1);
 
     samples = [];
     values = [];
@@ -55,7 +44,6 @@ function [minsample,minvalue,botrace] = bayesoptBARE(...
     fprintf('Running first point...\n');
     pt1 = unscale_point(hyper_grid(init(1),:),opt.mins,opt.maxes);
     sim_score = disp_map(scoresMapF, hyper_grid(init(1),:));
-
     % Get values for the first two samples (no point using a GP yet)
     [value, ~, dog_score, ~, ~] = F(pt1, stopTime, rtp_or_model, cost_op, siminit_name);
     values = [values;value];
@@ -82,7 +70,7 @@ function [minsample,minvalue,botrace] = bayesoptBARE(...
     
     % Remove first sample(s) from grid
     hyper_grid = hyper_grid(incomplete,:);
-    incomplete = logical(ones(size(hyper_grid,1),1));
+    incomplete = true(size(hyper_grid,1),1);
 
     % Main BO loop
 	i_start = length(values) - num_rand_pts + 1;
@@ -98,7 +86,7 @@ function [minsample,minvalue,botrace] = bayesoptBARE(...
             fprintf('Iteration %d, eic = %f\n',i+num_rand_pts,aq_val);
         end
 
-        % Evaluate the ca.ndidate with the highest EI to get the actual function 
+        % Evaluate the candidate with the highest EI to get the actual function 
         % value, and add this function value and the candidate to our set.
         hyper_cand_scaled = scale_point(hyper_cand,opt.mins,opt.maxes);
         sim_score = disp_map(scoresMapF, hyper_cand_scaled(:)');
@@ -116,7 +104,7 @@ function [minsample,minvalue,botrace] = bayesoptBARE(...
         if hidx >= 0
             incomplete(hidx) = false;
         	hyper_grid = hyper_grid(incomplete,:);
-        	incomplete = logical(ones(size(hyper_grid,1),1));
+        	incomplete = true(size(hyper_grid,1),1);
         end
 
         minvalues = [minvalues; min(values)];
@@ -141,49 +129,19 @@ end
 function [hyper_cand,hidx,aq_val] = get_next_cand(...
     samples,values,hyper_grid,opt,scoresMapF,hwadjustinfo)
     % Get posterior means and variances for all points on the grid.
-    if isfield(opt,'fixed_dims')
-        assert(size(opt.fixed_dims,2) == opt.dims)
-        % If opt.fixed_dims is [NaN, 3.0, NaN, 0.5] then will optimize only
-        % over 1st and 3rd dimensions, then fill in 3.0 for 2nd, 0.5 for 4th.
-        % Note: this could generate points off the grid.
-        fixed_dim_ids = ~isnan(opt.fixed_dims);
-        hyper_grid_backup_fixed = hyper_grid(:,fixed_dim_ids);
-        scaled_fixed_dims = scale_point(opt.fixed_dims,opt.mins,opt.maxes);
-        hyper_grid(:,fixed_dim_ids) = scaled_fixed_dims(fixed_dim_ids);
-    end
     [mu,sigma2,hyp] = get_posterior(...
         samples,values,hyper_grid,opt,-1,scoresMapF,hwadjustinfo);
     % Compute acquition function for all points in the grid and find maximum.
     best = min(values);
     ac = acquisition(best,mu,sigma2,opt);
-
-	%[mei,meidx] = max(ac);
-    if (isfield(opt,'random_topn') && opt.random_topn)  % avoid only getting one
-        topn_n = min(1000, opt.grid_size);              % lucky point as maximum
-        topn_ids = zeros(topn_n,1);                     % instead pick one of 1K
-        tmp_ac = ac(:,1);                               % best points randomly
-        for i=1:topn_n
-            [~, topn_ids(i)] = max(tmp_ac);
-            tmp_ac(topn_ids(i)) = -inf;
-        end
-        fprintf('random_topn:\n');
-        disp(ac(topn_ids(1:10)));
-        fprintf('mu:\n');
-        disp(mu(topn_ids(1:10)));
-        fprintf('sigma:\n');
-        disp(sqrt(sigma2(topn_ids(1:10))));
-    else
-        mei = max(ac);
-        topn_ids = ac==mei;
-    end
-    aa = 1:length(ac);
-    aa = aa(topn_ids);
-    meidx = aa(randi([1,length(aa)]));
+    mei = max(ac);
+    % randomly choose one of the candidates that have the same EI 
+    topn_ids = ac==mei;
+    tmp = 1:length(ac);
+    tmp = tmp(topn_ids);
+    meidx = tmp(randi([1,length(tmp)]));
     fprintf('Number of best points %d best id %d \n', length(aa), meidx);
     hyper_cand = unscale_point(hyper_grid(meidx,:),opt.mins,opt.maxes);
-    if isfield(opt,'fixed_dims')
-        hyper_grid(:,fixed_dim_ids) = hyper_grid_backup_fixed(:,:);
-    end
     hidx = meidx;
     aq_val = ac(meidx);
 end
@@ -192,7 +150,7 @@ function [hyper_cand,hidx,aq_val] = get_next_cand_conditional(...
     samples,values,hyper_grid,cond,opt,scoresMapF,hwadjustinfo)
     % Get next candidate conditioned on one dim fixed
     % cond is the last dimension - eg desired speed 
-
+    % can be changed to sample off grid in the conditional dim
     idx = (hyper_grid(:,end) == cond);
     % Get posterior means and variances for all points on the grid that have
     % the last dimension same as cond.
@@ -213,15 +171,12 @@ end
 
 function [mu,sigma2,hyp] = get_posterior(X,y,x_hats,opt,hyp,...
     scoresMapF,hwadjustinfo)
-    % Fit DoG hardware vs simluation adjustment GP.
-    % For low-dimensional kernels like DoG1 we only want to enable computing
-    % mismatch once some signal in the cost is observed. Otherwise we do not
-    % know which regions of the space are better than others - cost of ~100
-    % everywhere gives no signal. If the cost is ~100 everywhere, then the
-    % best we can do for 1D kernel, for example, is to randomly sample in
-    % the space that was already remapped to stretch the part of the space with
-    % points that have a hope of walking and shrink the part of the space 
-    % with non-walking points.
+% it might be better to optimize hyperparameters for lower dimensional kernels
+% after some points walk, rather than right from the second sample. Change
+% hwadjust_signal_threshold to change when the optimization of hyperparams
+% starts
+%Calculate posterior for hwadjust as well as the main GP. Use hwadjust
+%posterior to update estimate in scoresMapF
     has_signal = true;
     if isfield(opt, 'hwadjust_signal_threshold')
         has_signal = (max(y) - min(y)) > opt.hwadjust_signal_threshold;

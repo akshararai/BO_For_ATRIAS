@@ -1,0 +1,105 @@
+%
+% Tests for our modifications of bayesopt
+%
+% if ismac
+%     cd ~/Dropbox/boforloco/bayesopt/demo;
+% else
+%     cd /home/tyavchik/code/boforloco/bayesopt/demo;
+% end
+addpath(genpath('../../bayesopt'));
+clear all; clc;close all
+opt = defaultopt;
+opt.max_iters = 30;
+opt.grid_size = 10000;
+opt.use_ucb = true;
+
+dels = zeros(opt.grid_size,1);
+ids = randperm(opt.grid_size);
+% dels(ids(1:10000)) = 1;
+
+% rng(0)
+% S = rng
+
+%% Trying BO in 1D with visualization
+F = @(X) rosen(X); 
+opt.dims = 1; % Number of parameters.
+opt.mins = -20.0; % Minimum value for each of the parameters. Should be 1-by-opt.dims
+opt.maxes = 20.0; % Vector of maximum values for each parameter. 
+ 
+%opt.save_trace = 1;
+%opt.trace_file = 'demo_trace.mat';
+
+figure;
+xrange = linspace(opt.mins, opt.maxes)';
+yrange = F(xrange);
+subplot(3,1,1);
+plot(xrange, yrange);hold on;
+title('function and samples (optima in red)'); xlabel('Expected Improvement');
+drawnow;
+fprintf('Optimizing hyperparamters of function "1D fn" ...\n');
+
+[min_sample, min_value, botrace] = bayesoptBARE(F, opt);
+
+%% Test subspace optimization with braninf
+%opt.fixed_dims = [NaN, 2.275];  % for optimizing over a subspace
+
+opt.dims = 2;
+opt.mins = [-5, 9];
+opt.maxes = [10, 15];
+tstart = tic;
+
+[min_sample, min_value, botrace] = bayesopt_with_dels(str2func('braninf'), opt);
+ttime = toc(tstart);
+fprintf('BO: f_min %f, x* (%f %f) time %f sec\n', min_value, min_sample, ttime);
+assert(min_value-0.397887 < 0.01)
+%filename = ['/tmp/' 'bopt_text' '.mat'];
+%save(filename, 'botrace')
+
+%% Test subspace optimization with camelf
+%opt.fixed_dims = [NaN, 0.7126];  % for optimizing over a subspace
+opt.dims = 2;
+
+opt.mins = [-3, -2];
+opt.maxes = [3, 2];
+tstart = tic;
+[min_sample, min_value, botrace] = bayesoptBARE(str2func('camelf'), opt);
+ttime = toc(tstart);
+fprintf('BO camelf: f_min %f, x* (%f %f) time %f sec\n', ...
+    min_value, min_sample, ttime);
+assert(min_value+1.0316 < 0.001)
+
+%% TODO(rika): figure out what to do with chol warning.
+%
+% One way would be to stop sampling when next points are too close.
+% But not clear which distance to use as a threshold.
+% Potential code:
+% % Stop if the next point to sample is too close.
+% % This is to prevent Cholesky factorization from failing.
+% % If samples array (X) contains two nearly identical samples (rows)
+% % the matrix K(X,X) would have two similar rows, hence would be
+% % be close to being singular.
+% % So, we will stop BO if the next candidate is too close to one
+% % of the samples already recorded: if the best candidate identified
+% % by the acquisition function is so close - this means we are done
+% % optimizing. This holds only in the noiseless case.
+% % TODO(rika): make sure we do something else if we introduce noise.
+% scaled_cand = scale_point(hyper_cand,opt.mins,opt.maxes);
+% dists = sqrt(sum(abs(samples-scaled_cand).^2,2));
+% [mindst, minidx] = min(dists);
+% if mindst < 0.0001
+%     pstr0 = sprintf('%f ', scaled_cand);
+%     pstr1 = sprintf('%f ', samples(minidx,:));
+%     fprintf('Next candidate %s too close to sample %s\nDone.\n',  pstr0, pstr1);
+%     break
+% end
+        
+%% TODO: do we plan to include BO optimization not on the grid? 
+% E.g. the code thatcame with optimize_ei=true part of the BO library.
+% If so, then there for subspace optimization could do the approach similar
+% to SheffuledML's GPyOpt:
+% free_dim_ids = isnan(opt.fixed_dims)
+% samples_subspace = samples(free_dim_ids)
+% values_subspace = values(free_dim_ids)
+% ...
+
+%%

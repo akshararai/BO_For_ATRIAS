@@ -1,0 +1,20 @@
+sm.red = [252 18 0] / 255;
+sm.yellow = [255 253 72] / 255;
+sm.orange = [253 180 72] / 255;
+sm.black = [72 72 72] / 255;
+sm.gray = [170 170 170] / 255;
+sm.light_blue = [106 165 217] / 255;
+sm.light_gray = [220 220 220] / 255;
+sm.lighter_gray = [240 240 240] / 255;
+
+sm.shin_color_d = sm.yellow; 
+sm.fblink_color_d = sm.yellow; 
+sm.thigh_color_d = sm.black; 
+sm.lowerleg_color_d = sm.black;
+sm.hshaft_color_d = sm.orange;
+sm.torso_color_d = sm.gray;
+sm.boom_color_d = sm.lighter_gray;
+sm.yshaft_color_d = sm.light_gray;
+sm.base_color_d = sm.black;
+sm.floor_color_d = sm.light_blue;
+sm.foot_color_d = sm.orange;

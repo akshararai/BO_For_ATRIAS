@@ -1,0 +1,8 @@
+function [l_leg, dl_leg] = ComputeTwoPointFootLegLength(splay, dsplay, l_seg, l_seg_short, l_seg_lower)
+    c_squared = l_seg_short^2 + l_seg^2 - 2*l_seg_short*l_seg*cos(pi-splay);
+    c = c_squared^0.5;
+    x = asin(l_seg_short*sin(pi-splay)/c);
+    l_squared = c_squared + l_seg_lower^2 - 2*c*l_seg_lower*cos(x+pi-splay);
+    l_leg = l_squared^0.5;
+    dl_leg = -(sin(splay)*dsplay*(l_seg^4*l_seg_lower + 2*l_seg_lower*l_seg_short^4*cos(splay)^2 + l_seg^2*l_seg_lower*l_seg_short^2 + 8*l_seg^2*l_seg_lower*l_seg_short^2*cos(splay)^2 + 3*l_seg*l_seg_lower*l_seg_short^3*cos(splay) + 5*l_seg^3*l_seg_lower*l_seg_short*cos(splay) + 4*l_seg*l_seg_lower*l_seg_short^3*cos(splay)^3 + l_seg*l_seg_short*((l_seg + l_seg_short*cos(splay))^2/(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2))^(1/2)*(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2)^(3/2) - 2*l_seg_lower*l_seg_short*cos(splay)*((l_seg + l_seg_short*cos(splay))^2/(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2))^(1/2)*(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2)^(3/2)))/(((l_seg + l_seg_short*cos(splay))^2/(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2))^(1/2)*(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2)^(3/2)*(2*l_seg_lower*l_seg_short + l_seg^2 + l_seg_lower^2 + l_seg_short^2 + 2*l_seg*l_seg_short*cos(splay) - 2*l_seg_lower*l_seg_short*cos(splay)^2 + 2*l_seg_lower*cos(splay)*((l_seg + l_seg_short*cos(splay))^2/(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2))^(1/2)*(l_seg^2 + 2*cos(splay)*l_seg*l_seg_short + l_seg_short^2)^(1/2))^(1/2));
+end

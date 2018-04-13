@@ -140,7 +140,7 @@ function [hyper_cand,hidx,aq_val] = get_next_cand(...
     tmp = 1:length(ac);
     tmp = tmp(topn_ids);
     meidx = tmp(randi([1,length(tmp)]));
-    fprintf('Number of best points %d best id %d \n', length(aa), meidx);
+    fprintf('Number of best points %d best id %d \n', length(tmp), meidx);
     hyper_cand = unscale_point(hyper_grid(meidx,:),opt.mins,opt.maxes);
     hidx = meidx;
     aq_val = ac(meidx);

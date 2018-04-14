@@ -1,0 +1,5 @@
+This repository is meant to run BO on ATRIAS models of varying fidelity using pre-generated feature transforms DoG. 
+Some of the experiments are here: https://arxiv.org/abs/1709.06047
+
+The experiments for 9D and 50D controllers require feature transform data files that are too big to be added to the git repo.
+Ask Akshara for access to these data files.
